@@ -9,7 +9,7 @@ pipeline {
         MAVEN_HOME = '/usr/share/maven'
         
         // Configuration Docker Hub
-        DOCKER_HUB_CREDENTIALS = 'dockerhub-credentials'
+        DOCKER_HUB_CREDENTIALS = 'dockerhub'
         DOCKER_IMAGE_NAME = 'wissemsbaiti/timesheet-app'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
     }
