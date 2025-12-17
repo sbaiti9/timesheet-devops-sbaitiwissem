@@ -137,7 +137,9 @@ pipeline {
                         kubectl get svc -n devops
                         
                         echo '=== URL ACCES ==='
-                        minikube service spring-service -n devops --url
+                        echo 'Service accessible via NodePort sur le port 30080'
+                        NODE_IP=\$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+                        echo "URL: http://\${NODE_IP}:30080"
                     """
                 }
                 echo 'Vérification terminée'
