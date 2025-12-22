@@ -5,7 +5,8 @@ metadata:
   name: spring-config
   namespace: devops
 data:
-  DB_URL: "jdbc:mysql://mysql-service:3306/timesheet?useSSL=false&allowPublicKeyRetrieval=true"
+  # 🔧 CORRECTION : le nom de la base doit correspondre
+  DB_URL: "jdbc:mysql://mysql-service:3306/TPProjet?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
 ---
 # 2. Secret pour les credentials de la base de données
 apiVersion: v1
@@ -36,7 +37,7 @@ spec:
     spec:
       containers:
         - name: spring-app
-          image: mariem49/timesheet-app:latest
+          image: wissemsbaiti/timesheet-app:latest  # 🔧 Utilisez votre image
           ports:
             - containerPort: 8080
           env:
@@ -55,24 +56,24 @@ spec:
                 secretKeyRef:
                   name: spring-secret
                   key: DB_PASSWORD
-          # AJOUT DES PROBES POUR GÉRER LE LONG TEMPS DE DÉMARRAGE
+          # 🔧 PROBES AVEC CHEMINS CORRECTS
           readinessProbe:
             httpGet:
-              path: /tpProjet/actuator/health
+              path: /tpProjet/actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 150  # Attend 2min30 avant la première vérification
-            periodSeconds: 10         # Vérifie toutes les 10 secondes
-            timeoutSeconds: 5         # Timeout après 5 secondes
-            failureThreshold: 3       # Échoue après 3 tentatives ratées
+            initialDelaySeconds: 60   # Réduit de 150s à 60s
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /tpProjet/actuator/health
+              path: /tpProjet/actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 180  # Attend 3 minutes avant la première vérification
-            periodSeconds: 15         # Vérifie toutes les 15 secondes
-            timeoutSeconds: 5         # Timeout après 5 secondes
-            failureThreshold: 3       # Échoue après 3 tentatives ratées
-          # OPTIONNEL : AJOUT DE LIMITES DE RESSOURCES
+            initialDelaySeconds: 90   # Réduit de 180s à 90s
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # RESSOURCES
           resources:
             requests:
               memory: "512Mi"
