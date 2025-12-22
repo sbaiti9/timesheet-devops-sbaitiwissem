@@ -55,6 +55,31 @@ spec:
                 secretKeyRef:
                   name: spring-secret
                   key: DB_PASSWORD
+          # AJOUT DES PROBES POUR GÉRER LE LONG TEMPS DE DÉMARRAGE
+          readinessProbe:
+            httpGet:
+              path: /tpProjet/actuator/health
+              port: 8080
+            initialDelaySeconds: 150  # Attend 2min30 avant la première vérification
+            periodSeconds: 10         # Vérifie toutes les 10 secondes
+            timeoutSeconds: 5         # Timeout après 5 secondes
+            failureThreshold: 3       # Échoue après 3 tentatives ratées
+          livenessProbe:
+            httpGet:
+              path: /tpProjet/actuator/health
+              port: 8080
+            initialDelaySeconds: 180  # Attend 3 minutes avant la première vérification
+            periodSeconds: 15         # Vérifie toutes les 15 secondes
+            timeoutSeconds: 5         # Timeout après 5 secondes
+            failureThreshold: 3       # Échoue après 3 tentatives ratées
+          # OPTIONNEL : AJOUT DE LIMITES DE RESSOURCES
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
 ---
 # 4. Service Spring Boot (NodePort)
 apiVersion: v1
