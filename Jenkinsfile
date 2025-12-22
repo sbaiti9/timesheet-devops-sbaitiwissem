@@ -15,6 +15,7 @@ pipeline {
     }
     
     stages {
+        
         stage('1. Récupération du code depuis Git') {
             steps {
                 echo 'Clonage du repository Git...'
