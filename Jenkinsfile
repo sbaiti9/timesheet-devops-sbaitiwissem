@@ -89,7 +89,7 @@ pipeline {
                         sh """
                             echo \${DOCKER_PASS} | docker login -u \${DOCKER_USER} --password-stdin
                             docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                            docker push ${DOCKER_IMAGE_NAME}:latest
+                            docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                             docker logout
                         """
                     }
@@ -116,11 +116,35 @@ pipeline {
             steps {
                 echo 'Déploiement de l\'application Spring Boot sur Kubernetes...'
                 script {
-                    sh """
-                        kubectl apply -f k8s/spring-deployment.yaml
-                        kubectl set image deployment/spring-app spring-app=${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -n devops
-                        kubectl rollout status deployment/spring-app -n devops --timeout=300s
-                    """
+                    // Apply the deployment configuration
+                    sh 'kubectl apply -f k8s/spring-deployment.yaml'
+                    
+                    // Update the image to the new version
+                    sh "kubectl set image deployment/spring-app spring-app=${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -n devops"
+                    
+                    // Check deployment status with better timeout
+                    def rolloutStatus = sh(
+                        script: 'kubectl rollout status deployment/spring-app -n devops --timeout=600s',
+                        returnStatus: true
+                    )
+                    
+                    if (rolloutStatus != 0) {
+                        echo '⚠️ Rollout timed out or failed. Getting diagnostics...'
+                        sh '''
+                            echo "=== DEPLOYMENT STATUS ==="
+                            kubectl get deployment spring-app -n devops
+                            
+                            echo "=== POD STATUS ==="
+                            kubectl get pods -l app=spring-app -n devops
+                            
+                            echo "=== POD LOGS ==="
+                            kubectl logs -l app=spring-app -n devops --tail=50 || true
+                            
+                            echo "=== POD EVENTS ==="
+                            kubectl describe pods -l app=spring-app -n devops | grep -A 10 Events: || true
+                        '''
+                        error("Deployment failed - check logs above")
+                    }
                 }
                 echo 'Application Spring Boot déployée avec succès'
             }
@@ -137,10 +161,16 @@ pipeline {
                         echo '=== SERVICES ==='
                         kubectl get svc -n devops
                         
+                        echo '=== DEPLOYMENTS ==='
+                        kubectl get deployments -n devops
+                        
                         echo '=== URL ACCES ==='
                         echo 'Service accessible via NodePort sur le port 30080'
                         NODE_IP=\$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-                        echo "URL: http://\${NODE_IP}:30080"
+                        echo "URL: http://\${NODE_IP}:30080/tpProjet"
+                        
+                        echo '=== TEST DE SANTE ==='
+                        kubectl exec -n devops \$(kubectl get pod -l app=spring-app -n devops -o jsonpath='{.items[0].metadata.name}') -- wget -q -O- http://localhost:8080/tpProjet/actuator/health || echo "Health check not ready yet"
                     """
                 }
                 echo 'Vérification terminée'
@@ -153,6 +183,7 @@ pipeline {
             echo '✅ Pipeline exécuté avec succès !'
             echo "Image Docker: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
             echo "Application déployée sur Kubernetes dans le namespace 'devops'"
+            echo "Accès: http://<NODE_IP>:30080/tpProjet"
         }
         failure {
             echo '❌ Le pipeline a échoué. Vérifiez les logs ci-dessus.'
