@@ -5,7 +5,6 @@ metadata:
   name: spring-config
   namespace: devops
 data:
-  # 🔧 CORRECTION : le nom de la base doit correspondre
   DB_URL: "jdbc:mysql://mysql-service:3306/TPProjet?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
 ---
 # 2. Secret pour les credentials de la base de données
@@ -37,7 +36,7 @@ spec:
     spec:
       containers:
         - name: spring-app
-          image: wissemsbaiti/timesheet-app:latest  # 🔧 Utilisez votre image
+          image: wissemsbaiti/timesheet-app:latest
           ports:
             - containerPort: 8080
           env:
@@ -56,24 +55,26 @@ spec:
                 secretKeyRef:
                   name: spring-secret
                   key: DB_PASSWORD
-          # 🔧 PROBES AVEC CHEMINS CORRECTS
+          # Health probes with extended delays for slow startup
           readinessProbe:
             httpGet:
               path: /tpProjet/actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 60   # Réduit de 150s à 60s
+            initialDelaySeconds: 120  # Increased to allow full startup
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 5       # More tolerance for failures
           livenessProbe:
             httpGet:
               path: /tpProjet/actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 90   # Réduit de 180s à 90s
-            periodSeconds: 15
-            timeoutSeconds: 5
-            failureThreshold: 3
-          # RESSOURCES
+            initialDelaySeconds: 150  # Increased to allow full startup
+            periodSeconds: 20
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 5       # More tolerance for failures
+          # Resource limits
           resources:
             requests:
               memory: "512Mi"
