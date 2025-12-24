@@ -33,7 +33,7 @@ spec:
     metadata:
       labels:
         app: spring-app
-      # AJOUT IMPORTANT: Annotations pour Prometheus
+      # Annotations pour Prometheus
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
@@ -63,17 +63,19 @@ spec:
                   key: DB_PASSWORD
             - name: JAVA_OPTS
               value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom"
-          # Startup probe - gives app 5 minutes to start
+          
+          # ✅ STARTUP PROBE - Augmenté à 6 minutes (360 secondes)
           startupProbe:
             httpGet:
               path: /tpProjet/actuator/health
               port: 8080
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 60      # Attendre 60 secondes avant le premier check
+            periodSeconds: 15            # Vérifier toutes les 15 secondes
+            timeoutSeconds: 5            # Timeout de 5 secondes par requête
             successThreshold: 1
-            failureThreshold: 24
-          # Readiness probe
+            failureThreshold: 20         # 20 x 15s = 300s + 60s initial = 360s (6 minutes)
+          
+          # ✅ READINESS PROBE - Démarrer après le startup
           readinessProbe:
             httpGet:
               path: /tpProjet/actuator/health/readiness
@@ -83,7 +85,8 @@ spec:
             timeoutSeconds: 3
             successThreshold: 1
             failureThreshold: 3
-          # Liveness probe
+          
+          # ✅ LIVENESS PROBE - Démarrer après le startup
           livenessProbe:
             httpGet:
               path: /tpProjet/actuator/health/liveness
@@ -93,13 +96,15 @@ spec:
             timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
+          
+          # ✅ RESSOURCES - CPU requests réduit pour éviter "Insufficient CPU"
           resources:
             requests:
               memory: "512Mi"
-              cpu: "250m"
+              cpu: "200m"              # Réduit de 250m à 200m
             limits:
               memory: "1Gi"
-              cpu: "500m"
+              cpu: "1000m"             # Augmenté de 500m à 1000m pour plus de marge
 ---
 # 4. Service Spring Boot (NodePort)
 apiVersion: v1
@@ -107,7 +112,6 @@ kind: Service
 metadata:
   name: spring-service
   namespace: devops
-  # AJOUT IMPORTANT: Labels pour Prometheus
   labels:
     app: spring-app
 spec:
