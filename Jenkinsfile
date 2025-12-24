@@ -57,11 +57,16 @@ pipeline {
                 echo 'Génération du fichier JAR...'
                 dir("${PROJECT_DIR}") {
                     sh 'mvn package -DskipTests'
+
+                    echo '💾 Archivage du JAR généré...'
+                    archiveArtifacts artifacts: 'target/*.jar',
+                                     fingerprint: true,
+                                     allowEmptyArchive: false
+                    echo '📊 JAR archivé avec succès'
                 }
                 echo 'Fichier JAR généré avec succès'
             }
         }
-        
         stage('5. Construction de l\'image Docker') {
             steps {
                 echo 'Construction de l\'image Docker...'
