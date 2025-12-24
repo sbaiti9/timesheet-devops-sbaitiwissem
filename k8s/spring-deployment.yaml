@@ -26,6 +26,11 @@ metadata:
   namespace: devops
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: spring-app
@@ -55,25 +60,43 @@ spec:
                 secretKeyRef:
                   name: spring-secret
                   key: DB_PASSWORD
-          # Health probes with extended delays for slow startup
+            # Add JVM options for faster startup
+            - name: JAVA_OPTS
+              value: "-Xms256m -Xmx512m -XX:+UseContainerSupport"
+          
+          # Startup probe - checks if app has started (NEW - helps with slow startup)
+          startupProbe:
+            httpGet:
+              path: /tpProjet/actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 12  # 30s + (12 * 10s) = 150s total startup time allowed
+          
+          # Readiness probe - checks if app is ready to receive traffic
           readinessProbe:
             httpGet:
               path: /tpProjet/actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 120  # Increased to allow full startup
-            periodSeconds: 10
-            timeoutSeconds: 10
+            initialDelaySeconds: 10  # Reduced because startupProbe handles initial delay
+            periodSeconds: 5
+            timeoutSeconds: 3
             successThreshold: 1
-            failureThreshold: 5       # More tolerance for failures
+            failureThreshold: 3
+          
+          # Liveness probe - checks if app is still alive
           livenessProbe:
             httpGet:
               path: /tpProjet/actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 150  # Increased to allow full startup
-            periodSeconds: 20
-            timeoutSeconds: 10
+            initialDelaySeconds: 10  # Reduced because startupProbe handles initial delay
+            periodSeconds: 10
+            timeoutSeconds: 5
             successThreshold: 1
-            failureThreshold: 5       # More tolerance for failures
+            failureThreshold: 3
+          
           # Resource limits
           resources:
             requests:
